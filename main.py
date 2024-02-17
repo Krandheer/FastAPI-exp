@@ -16,7 +16,8 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-fake_db = {
+
+db = {
     "tim": {
         "username": "ravi",
         "full_name": "ravi coder",
@@ -57,6 +58,42 @@ app = FastAPI()
 def verify_password(plain_password, hashed_password):
     """password verification"""
     return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hashed(password):
+    """hashing the password"""
+    return pwd_context.hash(password)
+
+
+def get_user(db, username: str):
+    """get user"""
+    if username in db:
+        user_data = db[username]
+        return UserInDB(**user_data)
+    return {"err": "user not found in dd"}
+
+
+def authenticate_user(db, username: str, password: str):
+    """authenticate user"""
+    user = get_user(db, username)
+    if not user:
+        return False
+    hashed_password = get_password_hashed(password)
+    if not verify_password(password, hashed_password):
+        return False
+    return user
+
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    """generate access token"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encode_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encode_jwt
 
 
 class Data(BaseModel):
